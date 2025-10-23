@@ -1,0 +1,11 @@
+{
+    "name": "Worship",
+    "alias": "worship",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Worship\\Providers\\WorshipServiceProvider"
+    ],
+    "files": []
+}
