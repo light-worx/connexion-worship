@@ -1,6 +1,6 @@
 {
     "name": "light-worx/connexion-worship",
-    "description": "",
+    "description": "Worship module for Connexion church management software",
     "authors": [
         {
             "name": "Michael Bishop",
