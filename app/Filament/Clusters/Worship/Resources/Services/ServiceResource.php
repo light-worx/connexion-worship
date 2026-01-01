@@ -17,9 +17,11 @@ use Modules\Worship\Models\Service;
 
 class ServiceResource extends Resource
 {
+    protected static ?int $navigationSort = 1;
+    
     protected static ?string $model = Service::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
 
     protected static ?string $cluster = WorshipCluster::class;
 

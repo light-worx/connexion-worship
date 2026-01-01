@@ -2,12 +2,15 @@
 
 namespace Modules\Worship\Models;
 
+use App\Traits\Taggable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
 {
+    use Taggable;
+
     public $table = 'services';
     protected $guarded = ['id'];
     public $timestamps = false;

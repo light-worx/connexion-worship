@@ -19,7 +19,9 @@ class SongResource extends Resource
 {
     protected static ?string $model = Song::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?int $navigationSort = 2;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSpeakerWave;
 
     protected static ?string $cluster = WorshipCluster::class;
 

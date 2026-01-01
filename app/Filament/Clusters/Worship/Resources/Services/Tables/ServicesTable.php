@@ -14,28 +14,20 @@ class ServicesTable
     {
         return $table
             ->columns([
-                TextColumn::make('servicedate')
-                    ->date()
+                TextColumn::make('servicedate')->label('Date of service')
+                    ->date('Y-m-d')
                     ->sortable(),
-                TextColumn::make('servicetime')
-                    ->searchable(),
-                TextColumn::make('sermon_title')
-                    ->searchable(),
-                TextColumn::make('audio')
-                    ->searchable(),
-                TextColumn::make('video')
+                TextColumn::make('servicetime')->label('Time')
                     ->searchable(),
                 TextColumn::make('reading')
                     ->searchable(),
-                TextColumn::make('series.id')
-                    ->searchable(),
-                TextColumn::make('person_id')
-                    ->numeric()
+                TextColumn::make('series.series')
                     ->sortable(),
             ])
             ->filters([
                 //
             ])
+            ->defaultSort(fn ($query) => $query->orderBy('servicedate', 'desc')->orderBy('servicetime', 'asc'))
             ->recordActions([
                 EditAction::make(),
             ])

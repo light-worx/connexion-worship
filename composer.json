@@ -7,6 +7,10 @@
             "email": "admin@lightworx.co.za"
         }
     ],
+    "require": {
+        "hugomyb/filament-media-action": "^4.1",
+        "joaopaulolndev/filament-pdf-viewer": "^2.0"
+    },
     "extra": {
         "laravel": {
             "providers": [],

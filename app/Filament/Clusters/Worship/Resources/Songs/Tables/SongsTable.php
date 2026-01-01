@@ -3,10 +3,13 @@
 namespace Modules\Worship\Filament\Clusters\Worship\Resources\Songs\Tables;
 
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SongsTable
 {
@@ -15,49 +18,41 @@ class SongsTable
         return $table
             ->columns([
                 TextColumn::make('title')
-                    ->searchable(),
-                TextColumn::make('author')
-                    ->searchable(),
-                TextColumn::make('copyright')
-                    ->searchable(),
+                    ->searchable(['title','lyrics','author']),
+                TextColumn::make('lastused')
+                    ->label('Last used'),
+                IconColumn::make('musictype')->label('Type')
+                    ->icon(fn (string $state): string => match ($state) {
+                        'archive' => 'heroicon-o-archive-box-x-mark',
+                        'hymn' => 'heroicon-o-building-library',
+                        'contemporary' => 'heroicon-o-musical-note',
+                    }),
+                IconColumn::make('music')
+                    ->boolean(),
                 TextColumn::make('key')
-                    ->searchable(),
-                TextColumn::make('tempo')
-                    ->searchable(),
-                TextColumn::make('audio')
-                    ->searchable(),
-                TextColumn::make('video')
-                    ->searchable(),
-                TextColumn::make('music')
-                    ->searchable(),
-                TextColumn::make('musictype')
-                    ->searchable(),
-                TextColumn::make('bible')
-                    ->searchable(),
-                TextColumn::make('firstline')
-                    ->searchable(),
-                TextColumn::make('verseorder')
-                    ->searchable(),
-                TextColumn::make('tune')
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('Key'),
+                TextColumn::make('tags.name')
+                    ->badge()
+                    ->forceSearchCaseInsensitive(true)
+                    ->searchable()
             ])
+            ->defaultSort('title','ASC')
             ->filters([
-                //
+                SelectFilter::make('musictype')->label('')
+                    ->options([
+                        'archive' => 'Archive',
+                        'contemporary' => 'Contemporary',
+                        'hymn' => 'Hymn'
+                    ]),
+                Filter::make('hide_archive')
+                    ->query(fn (Builder $query): Builder => $query->where('musictype', '<>', 'archive'))
+                    ->default()
             ])
             ->recordActions([
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
