@@ -83,7 +83,7 @@ class SongForm
                             ->hiddenOn('create')
                             ->label('')
                             ->minHeight('80svh')
-                            ->fileUrl(fn (Song $record) => url('/') . '/admin/reports/song/' . $record->id)
+                            ->fileUrl(fn (Song $record) => route('reports.song', $record))
                             ->columnSpanFull(),
                     ]),
                     Tab::make('Details')->columns(2)->schema([
