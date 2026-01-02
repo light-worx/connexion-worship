@@ -44,18 +44,21 @@ class SongReport extends BaseReport
             return;
         }
         $this->SetY($this->config['page']['margins']['top'] - 5);
-
         if ($this->reportTitle) {
+
+            $this->SetFont('Courier', '', 10);
+            $this->SetXY(171,14);
+            $this->Cell(30, 0, 'Key: ' . $this->song->key, 0, 0, 'R');
+            $this->SetXY(171,19);
+            $this->Cell(30, 0, $this->song->tempo, 0, 0, 'R');
             $this->SetFont('Courier', 'B', 14);
             $this->Text(15, 16, $this->reportTitle);
             $this->SetFont('Courier', 'I', 10);
             $this->Text(15, 20, $this->song->author);
             $this->SetFont('Courier', '', 10);
-            $this->Text(185, 16, 'Key: ' . $this->song->key);
-            $this->Text(190, 20, $this->song->tempo);
         }
-        $this->Ln(8);
         $this->SetDrawColor(0,0,0);
+        $this->SetXY(15,22);
         $this->Line(
             $this->config['page']['margins']['left'],
             $this->GetY(),
@@ -226,20 +229,6 @@ class SongReport extends BaseReport
     protected function getFilename(): string
     {
         return 'song-report-' . now()->format('Y-m-d') . '.pdf';
-    }
-
-    protected function convert_smart_quotes($string) {
-        $search = array(chr(0xe2) . chr(0x80) . chr(0x98),
-                        chr(0xe2) . chr(0x80) . chr(0x99),
-                        chr(0xe2) . chr(0x80) . chr(0x9c),
-                        chr(0xe2) . chr(0x80) . chr(0x9d),
-                        chr(0xe2) . chr(0x80) . chr(0x93),
-                        chr(0xe2) . chr(0x80) . chr(0x94),
-                        chr(226) . chr(128) . chr(153),
-                        'â€™','â€œ','â€<9d>','â€"','Â  ');
-        $replace = array("'","'",'"','"',' - ',' - ',"'","'",'"','"',' - ',' ');
-    
-        return str_replace($search, $replace, $string);
     }
 
     private function _getChords($lyrics)
