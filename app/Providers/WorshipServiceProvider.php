@@ -2,6 +2,7 @@
 
 namespace Modules\Worship\Providers;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Nwidart\Modules\Traits\PathNamespace;
@@ -27,6 +28,11 @@ class WorshipServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
+        Relation::morphMap([
+            'prayer' => 'Modules\Worship\Models\Prayer',
+            'sermon' => 'Modules\Worship\Models\Service',
+            'song' => 'Modules\Worship\Models\Song'
+        ]);
     }
 
     /**
@@ -125,7 +131,7 @@ class WorshipServiceProvider extends ServiceProvider
         $viewPath = resource_path('views/modules/'.$this->nameLower);
         $sourcePath = module_path($this->name, 'resources/views');
 
-        $this->publishes([$sourcePath => $viewPath], ['views', '-module-views']);
+        $this->publishes([$sourcePath => $viewPath], ['views', 'worship-module-views']);
 
         $this->loadViewsFrom(array_merge($this->getPublishableViewPaths(), [$sourcePath]), $this->nameLower);
 

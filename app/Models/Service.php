@@ -2,6 +2,7 @@
 
 namespace Modules\Worship\Models;
 
+use App\Models\Person;
 use App\Traits\Taggable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,5 +24,10 @@ class Service extends Model
     public function setitems(): HasMany
     {
         return $this->hasMany(Setitem::class);
+    }
+
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
     }
 }

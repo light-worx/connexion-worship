@@ -2,7 +2,6 @@
 
 namespace Modules\Worship\Reports;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Lightworx\FilamentReports\Reports\BaseReport;
 use Modules\Worship\Models\Chord;
@@ -25,7 +24,6 @@ class SongReport extends BaseReport
 
     public static function routes(): void
     {
-        Log::info('SongReport routes() method called!');
         Route::get('/admin/worship/reports/songs/{song}', function ($songId) {
             $song = Song::findOrFail($songId);
             return (new static())->setSong($song)->handle();
@@ -67,7 +65,7 @@ class SongReport extends BaseReport
         );
         $this->Ln(5);
 
-        // Sony lyrics
+        // Song lyrics
         $lines=explode(PHP_EOL, $this->song->lyrics);
         $y=30;
         $vo=explode(" ",$this->song->verseorder);
