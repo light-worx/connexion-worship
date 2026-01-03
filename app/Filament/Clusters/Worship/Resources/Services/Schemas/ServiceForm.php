@@ -2,6 +2,7 @@
 
 namespace Modules\Worship\Filament\Clusters\Worship\Resources\Services\Schemas;
 
+use App\Models\Tag;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -263,10 +264,7 @@ class ServiceForm
                                                     ->find($get('id'))
                                                     ?->setitemable?->title;
                                             }),
-                                        TextInput::make('note')->label('Details')
-                                            ->default(function (Get $get){
-                                                return $get('note');
-                                            }),
+                                        TextInput::make('note')->label('Details'),
                                         Hidden::make('id'),
                                     ])
                                     ->action(function (array $data) {
@@ -319,6 +317,9 @@ class ServiceForm
                         ),
                         Select::make('tags')
                             ->multiple()
+                            ->options(fn () => \App\Models\Tag::where('type', 'service')->pluck('name', 'id'))
+                            ->preload()
+                            ->searchable()
                             ->createOptionForm([
                                 Grid::make()
                                     ->columns(2)
@@ -328,13 +329,21 @@ class ServiceForm
                                             ->afterStateUpdated(fn (Set $set, ?string $state) => $set('slug', Str::slug($state)))
                                             ->required(),
                                         TextInput::make('type')
-                                            ->default('sermon')
+                                            ->default('service')
                                             ->readonly()
                                             ->required(),
                                         TextInput::make('slug')
                                             ->required(),
                                     ])
-                            ]),
+                            ])
+                            ->createOptionUsing(function (array $data): int {
+                                $tag = \App\Models\Tag::create($data);
+                                return $tag->id;
+                            })
+                            ->saveRelationshipsUsing(function ($component, $state, $record) {
+                                $record->tags()->sync($state ?? []);
+                            })
+                            ->dehydrated(false)
                     ])
                 ])
             ]);
