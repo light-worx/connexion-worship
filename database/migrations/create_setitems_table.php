@@ -21,6 +21,7 @@ return new class extends Migration
             $table->unsignedInteger('sort_order');
             $table->timestamps();
             $table->index(['service_id', 'sort_order']);
+            $table->string('note')->nullable();
         });
     }
 

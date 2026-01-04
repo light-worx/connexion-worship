@@ -19,7 +19,7 @@ class ServiceReport extends BaseReport
     public static function routes(): void
     {
         Route::get('/admin/worship/reports/services/{id}', function ($serviceId) {
-            $service = Service::with(['setitems' => function($q) { $q->orderBy('sortorder', 'asc'); }])->where('id',$serviceId)->first();
+            $service = Service::with(['setitems' => function($q) { $q->orderBy('sort_order', 'asc'); }])->where('id',$serviceId)->first();
             return (new static())->setService($service)->handle();
         })->name('reports.service');
     }
