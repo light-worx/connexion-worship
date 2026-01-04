@@ -193,14 +193,14 @@ class ServiceForm
                                     ])
                                     ->after(function (array $data, Get $get, Repeater $component) {
                                         $serviceId = $get('id');
-                                        $sort = count($component->getState());
+                                        $sort = count($component->getState())-2;
 
                                         $setitem = Setitem::create([
                                             'service_id' => $serviceId,
                                             'element_type_id' => $data['element_type_id'],
                                             'content_id' => $data['content_id'] ?? null,
                                             'note' => $data['note'] ?? null,
-                                            'sortorder' => $sort,
+                                            'sort_order' => $sort,
                                         ]);
 
                                         $component->state(
@@ -213,7 +213,7 @@ class ServiceForm
                                                     'title' => $setitem->content_id 
                                                         ? ($setitem->{$setitem->elementType->content_kind}?->title ?? $setitem->note) 
                                                         : ($setitem->elementType?->label ?? $setitem->note),
-                                                    'sortorder' => $setitem->sortorder,
+                                                    'sort_order' => $setitem->sort_order,
                                                 ])
                                                 ->toArray()
                                         );
@@ -288,17 +288,14 @@ class ServiceForm
                                                 };
                                             })
                                             ->visible(fn(Get $get) => ServiceElementType::find($get('element_type_id'))->expects_content ?? false),
-
+                                        Hidden::make('id')->default(fn (Get $get) => $get('id')),
                                         TextInput::make('note')->label('Optional note'),
                                     ])
                                     ->action(function (array $data, callable $set) {
-                                        if (! isset($data['id'])) {
-                                            return;
-                                        }
-
-                                        // Persist to DB
                                         Setitem::whereKey($data['id'])->update([
                                             'note' => $data['note'] ?? null,
+                                            'element_type_id' => $data['element_type_id'] ?? null,
+                                            'content_id' => $data['content_id'] ?? null,
                                         ]);
 
                                         // Update repeater state so UI refreshes
