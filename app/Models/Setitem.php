@@ -22,4 +22,9 @@ class Setitem extends Model
         return $this->belongsTo(Service::class);
     }
 
+    public function elementType()
+    {
+        return $this->belongsTo(ServiceElementType::class);
+    }
+
 }

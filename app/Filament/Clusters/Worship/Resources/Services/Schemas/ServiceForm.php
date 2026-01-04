@@ -2,6 +2,7 @@
 
 namespace Modules\Worship\Filament\Clusters\Worship\Resources\Services\Schemas;
 
+use App\Models\Person;
 use App\Models\Tag;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -27,12 +28,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Modules\Website\Models\Person;
 use Modules\Worship\Models\Prayer;
 use Modules\Worship\Models\Service;
 use Modules\Worship\Models\Setitem;
 use Modules\Worship\Models\Song;
 use Illuminate\Support\Str;
+use Modules\Worship\Models\ServiceElementType;
 
 class ServiceForm
 {
@@ -122,156 +123,178 @@ class ServiceForm
                         View::make('worship::repeater-style'),     
                         Repeater::make('setitems')
                             ->relationship('setitems')
-                            ->hiddenOn('create')
-                            ->columnSpan(2)
                             ->label('')
                             ->live()
-                            ->orderColumn('sortorder')
+                            ->orderColumn('sort_order')
                             ->reorderableWithDragAndDrop()
                             ->addActionLabel('Add new set item')
-                            ->hiddenLabel()
                             ->table([
-                                TableColumn::make('note')->hiddenHeaderLabel()
+                                TableColumn::make('title')->hiddenHeaderLabel(),
+                                TableColumn::make('note')->hiddenHeaderLabel(),
                             ])
                             ->schema([
-                                TextEntry::make('note')
+                                TextEntry::make('title')
                                     ->hiddenLabel()
                                     ->state(function (Get $get) {
-                                        return Setitem::with('setitemable')
-                                            ->find($get('id'))
-                                            ?->setitemable?->title ?? Setitem::find($get('id'))?->note;
-                                    })
-                                    ->icon(function (Get $get) {
-                                        $item = Setitem::with('setitemable')->find($get('id'));
-                                        if ($item->setitemable_type === 'song') {
-                                            return 'heroicon-o-musical-note';
-                                        } elseif ($item->setitemable_type === 'prayer') {
-                                            return 'heroicon-o-book-open';
-                                        } else {
-                                            return 'heroicon-o-user';
-                                        }
-                                    })
+                                        $item = Setitem::with('elementType', 'content')->find($get('id'));
+                                        if (!$item) return null;
+                                        
+                                        // Use content title if exists, otherwise note
+                                        return $item->content?->title ?? $item->elementType?->label ?? $item->note;
+                                    }),
+                                TextInput::make('note')->label('Details'),
                             ])
-                            // 👇 ADD ITEM
                             ->addAction(
-                                fn (Action $action) => $action
+                                fn(Action $action) => $action
                                     ->schema([
-                                        Select::make('setitemable_type')
-                                            ->label('Item type')
-                                            ->options([
-                                                'song' => 'Song',
-                                                'prayer' => 'Liturgy',
-                                                'other' => 'Other',
-                                            ])
-                                            ->default('song')
-                                            ->live()
-                                            ->afterStateUpdated(fn (Set $set) => $set('setitemable_id', null)),
-
-                                        Select::make('setitemable_id')
-                                            ->label('Item')
+                                        Select::make('element_type_id')
+                                            ->label('Type')
+                                            ->options(ServiceElementType::orderBy('label')->pluck('label', 'id')->toArray())
+                                            ->reactive()
+                                            ->afterStateUpdated(fn(Set $set) => $set('content_id', null)),
+                                        
+                                        Select::make('content_id')
+                                            ->label('Select content')
                                             ->searchable()
                                             ->options(function (Get $get) {
-                                                return match ($get('setitemable_type')) {
+                                                $type = ServiceElementType::find($get('element_type_id'));
+                                                if (!$type || !$type->expects_content) return [];
+                                                
+                                                return match ($type->content_kind) {
                                                     'song' => Song::orderBy('title')->pluck('title', 'id')->toArray(),
                                                     'prayer' => Prayer::orderBy('title')->pluck('title', 'id')->toArray(),
-                                                    default => collect(setting('worship.set_items'))->sort()->combine(setting('worship.set_items'))->toArray(),
+                                                    //'reading' => BibleReading::pluck('reference', 'id')->toArray(),
+                                                    'preacher' => Person::orderBy('firstname')->orderBy('surname')->pluck('firstname', 'id')->toArray(),
+                                                    default => [],
                                                 };
-                                            }),
-
-                                        TextInput::make('note'),
+                                            })
+                                            ->visible(fn(Get $get) => ServiceElementType::find($get('element_type_id'))->expects_content ?? false),
+                                        
+                                        TextInput::make('note')->label('Optional note'),
                                     ])
                                     ->after(function (array $data, Get $get, Repeater $component) {
                                         $serviceId = $get('id');
                                         $sort = count($component->getState());
-
-                                        if ($data['setitemable_type'] === 'song') {
-                                            $song = Song::find($data['setitemable_id']);
-                                            $data['note'] = trim(($data['note'] ?? '') . ' ' . $song?->tune);
-                                        }
-
-                                        if ($data['setitemable_type'] === 'other') {
-                                            $data['note'] = $data['setitemable_id'];
-                                            $data['setitemable_id'] = null;
-                                            $data['setitemable_type'] = null;
-                                        }
-
+                                        
                                         $setitem = Setitem::create([
                                             'service_id' => $serviceId,
-                                            'setitemable_id' => $data['setitemable_id'],
-                                            'setitemable_type' => $data['setitemable_type'],
-                                            'note' => $data['note'],
+                                            'element_type_id' => $data['element_type_id'],
+                                            'content_id' => $data['content_id'] ?? null,
+                                            'note' => $data['note'] ?? null,
                                             'sortorder' => $sort,
                                         ]);
-
+                                        
                                         $component->state(
                                             collect($component->getState())
-                                                ->filter(fn ($_, $k) => str_starts_with($k, 'record-'))
                                                 ->put("record-{$setitem->id}", [
                                                     'id' => $setitem->id,
-                                                    'service_id' => $serviceId,
-                                                    'setitemable_id' => $setitem->setitemable_id,
-                                                    'setitemable_type' => $setitem->setitemable_type,
-                                                    'note' => $setitem->setitemable?->title ?? $setitem->note,
+                                                    'element_type_id' => $setitem->element_type_id,
+                                                    'content_id' => $setitem->content_id,
+                                                    'note' => $setitem->note,
+                                                    'title' => $setitem->content?->title ?? $setitem->elementType?->label ?? $setitem->note,
                                                     'sortorder' => $setitem->sortorder,
                                                 ])
                                                 ->toArray()
                                         );
                                     })
                             )
-
-                            // 👇 DELETE
                             ->deleteAction(
-                                fn (Action $action) => $action
+                                fn(Action $action) => $action
                                     ->after(function (array $arguments) {
                                         $id = str_replace('record-', '', $arguments['item']);
                                         Setitem::find($id)?->delete();
                                     })
                             )
-
                             ->extraItemActions([
+                                // ------------------- VIEW / LINK -------------------
                                 Action::make('viewItem')
                                     ->icon('heroicon-o-link')
                                     ->visible(function (array $arguments, Repeater $component) {
                                         $itemData = $component->getRawItemState($arguments['item']);
-                                        if ($itemData['setitemable_type'] === 'song' || $itemData['setitemable_type'] === 'prayer') {
-                                            return true;
-                                        } else {
+
+                                        // safely get element type ID
+                                        $elementTypeId = $itemData['element_type_id'] 
+                                            ?? $itemData['element_type']['id'] 
+                                            ?? null;
+
+                                        if (!$elementTypeId) {
                                             return false;
                                         }
+
+                                        $elementType = ServiceElementType::find($elementTypeId);
+                                        return in_array($elementType->content_kind ?? '', ['song', 'prayer']);
                                     })
                                     ->url(function (array $arguments, Repeater $component) {
-                                        $state = $component->getRawItemState($arguments['item']);
-                                        return match ($state['setitemable_type'] ?? null) {
-                                            'song' => route('filament.admin.worship.resources.songs.edit', ['record' => $state['setitemable_id']]),
-                                            'prayer' => route('filament.admin.worship.resources.prayers.edit', ['record' => $state['setitemable_id']]),
+                                        $itemData = $component->getRawItemState($arguments['item']);
+
+                                        // safely get element type ID
+                                        $elementTypeId = $itemData['element_type_id'] 
+                                            ?? $itemData['element_type']['id'] 
+                                            ?? null;
+
+                                        if (!$elementTypeId || empty($itemData['content_id'])) {
+                                            return null;
+                                        }
+
+                                        $elementType = ServiceElementType::find($elementTypeId);
+
+                                        return match ($elementType->content_kind ?? null) {
+                                            'song' => route('filament.admin.worship.resources.songs.edit', ['record' => $itemData['content_id']]),
+                                            'prayer' => route('filament.admin.worship.resources.prayers.edit', ['record' => $itemData['content_id']]),
                                             default => null,
                                         };
                                     })
                                     ->openUrlInNewTab(),
 
+                                // ------------------- EDIT -------------------
                                 Action::make('editSetitem')
                                     ->icon('heroicon-o-pencil-square')
                                     ->fillForm(function (array $arguments, Repeater $component) {
-                                        $row=$component->getRawItemState($arguments['item']);
-                                        $setitem=Setitem::find($row['id'])->toArray();
-                                        return $setitem;
+                                        $row = $component->getRawItemState($arguments['item']);
+                                        $setitem = Setitem::with('elementType', 'content')->find($row['id']);
+                                        if (!$setitem) return [];
+
+                                        return [
+                                            'id' => $setitem->id,
+                                            'element_type_id' => $setitem->element_type_id,
+                                            'content_id' => $setitem->content_id,
+                                            'note' => $setitem->note,
+                                        ];
                                     })
                                     ->schema([
-                                        TextEntry::make('title')
-                                            ->hiddenLabel()
-                                            ->state(function (Get $get) {
-                                                return Setitem::with('setitemable')
-                                                    ->find($get('id'))
-                                                    ?->setitemable?->title;
-                                            }),
-                                        TextInput::make('note')->label('Details'),
-                                        Hidden::make('id'),
+                                        Select::make('element_type_id')
+                                            ->label('Type')
+                                            ->options(ServiceElementType::orderBy('label')->pluck('label', 'id')->toArray())
+                                            ->reactive()
+                                            ->afterStateUpdated(fn(Set $set) => $set('content_id', null)),
+
+                                        Select::make('content_id')
+                                            ->label('Select content')
+                                            ->searchable()
+                                            ->options(function (Get $get) {
+                                                $type = ServiceElementType::find($get('element_type_id'));
+                                                if (!$type || !$type->expects_content) return [];
+
+                                                return match ($type->content_kind) {
+                                                    'song' => Song::orderBy('title')->pluck('title', 'id')->toArray(),
+                                                    'prayer' => Prayer::orderBy('title')->pluck('title', 'id')->toArray(),
+                                                    'reading' => BibleReading::pluck('reference', 'id')->toArray(),
+                                                    'preacher' => Person::orderBy('firstname')->orderBy('surname')->pluck('firstname', 'id')->toArray(),
+                                                    default => [],
+                                                };
+                                            })
+                                            ->visible(fn(Get $get) => ServiceElementType::find($get('element_type_id'))->expects_content ?? false),
+
+                                        TextInput::make('note')->label('Optional note'),
                                     ])
                                     ->action(function (array $data) {
-                                        Setitem::find($data['id'])?->update(['note' => $data['note']]);
+                                        Setitem::find($data['id'])?->update([
+                                            'element_type_id' => $data['element_type_id'],
+                                            'content_id' => $data['content_id'] ?? null,
+                                            'note' => $data['note'] ?? null,
+                                        ]);
                                     }),
                             ])
-
                     ]),
                     Tab::make('Sermon')->columns(2)->schema([
                         Select::make('person_id')
