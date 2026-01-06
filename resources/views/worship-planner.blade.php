@@ -33,28 +33,31 @@
                             </div>
                             
                             @if ($plan) {{-- Check if a plan exists first --}}
-                                {{-- 1. Display Series Image if it exists --}}
                                 @if (!empty($plan['series']['image']))
                                     <img src="{{ asset('storage/' . $plan['series']['image']) }}"
                                         alt=""
                                         class="my-2 h-20 w-full rounded object-cover">
                                 @endif
-
-                                {{-- 2. Display Series Title or a fallback if no series is selected --}}
                                 <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
                                     style="border-left: 4px solid {{ $plan['series']['colour'] ?? '#0d9488' }}; padding-left: 0.5rem">
                                     {{ $plan['series']['series'] ?? 'No Series' }}
                                 </div>
-
-                                {{-- 3. Display Theme (Now outside the series-specific check) --}}
-                                @if ($plan['theme'])
+                                @if ($plan['details'])
                                     <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                        {{ $plan['theme'] }}
+                                        {{ $plan['details'] }}
                                     </div>
                                 @endif
-
+                                @if ($plan['reading'])
+                                    <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                        <strong>Bible Reading:</strong> {{ $plan['reading'] }}
+                                    </div>
+                                @endif
+                                @if ($plan['person_id'])
+                                    <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                        {{ $plan['person']['firstname'] }} {{ $plan['person']['surname'] }}
+                                    </div>
+                                @endif
                             @else
-                                {{-- No plan exists for this date at all --}}
                                 <div class="mt-2 text-sm italic text-gray-400">+ Assign series</div>
                             @endif
                         </div>

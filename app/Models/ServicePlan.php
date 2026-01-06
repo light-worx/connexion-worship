@@ -2,6 +2,7 @@
 
 namespace Modules\Worship\Models;
 
+use App\Models\Person;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
@@ -27,6 +28,10 @@ class ServicePlan extends Model
         return $this->belongsTo(Series::class);
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
     /*
      |--------------------------------------------------------------------------
      | Scopes

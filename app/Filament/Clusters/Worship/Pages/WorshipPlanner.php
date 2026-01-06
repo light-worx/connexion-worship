@@ -2,6 +2,7 @@
 
 namespace Modules\Worship\Filament\Clusters\Worship\Pages;
 
+use App\Models\Person;
 use Filament\Pages\Page;
 use Carbon\Carbon;
 use BackedEnum;
@@ -28,7 +29,9 @@ class WorshipPlanner extends Page implements HasForms
 
     public bool $isEditorOpen = false;
     public ?string $selectedDate = null;
-    public ?string $theme = null;
+    public ?string $details = null;
+    public ?string $reading = null;
+    public ?string $person_id = null;
     public ?array $plans = null;
     public int $year;
 
@@ -65,7 +68,9 @@ class WorshipPlanner extends Page implements HasForms
 
         $this->form->fill([
             'selectedSeriesId' => $plan?->series_id,
-            'theme' => $plan?->theme,
+            'details' => $plan?->details,
+            'reading' => $plan?->reading,
+            'person_id' => $plan?->person_id
         ]);
 
         $this->isEditorOpen = true;
@@ -80,7 +85,9 @@ class WorshipPlanner extends Page implements HasForms
             ['date' => $this->selectedDate],
             [
                 'series_id' => $data['selectedSeriesId'] ?? null,
-                'theme' => $data['theme'] ?? null,
+                'details' => $data['details'] ?? null,
+                'reading' => $data['reading'] ?? null,
+                'person_id' => $data['person_id'] ?? null,
             ]
         );
 
@@ -127,15 +134,27 @@ class WorshipPlanner extends Page implements HasForms
                 ->searchable()
                 ->placeholder('Select a series'),
 
-            TextInput::make('theme')
-                ->label('Theme')
+            TextInput::make('details')
+                ->label('details')
                 ->maxLength(255),
+
+            TextInput::make('reading')
+                ->label('Bible Reading')
+                ->maxLength(255),
+
+            Select::make('person_id')
+                ->label('Preacher')
+                ->options(
+                    Person::pluck('firstname', 'id')
+                )
+                ->searchable()
+                ->placeholder('Select a preacher'),
         ];
     }
 
     protected function loadPlans(): void
     {
-        $this->plans = ServicePlan::with('series')
+        $this->plans = ServicePlan::with('series','person')
             ->whereYear('date', $this->year)
             ->get()
             ->keyBy(fn ($plan) => $plan->date->toDateString())
@@ -157,16 +176,30 @@ class WorshipPlanner extends Page implements HasForms
                     ->searchable()
                     ->placeholder('Select a series'),
 
-                TextInput::make('theme')
-                    ->label('Theme')
+                TextInput::make('details')
+                    ->label('Details')
                     ->maxLength(255),
+
+                TextInput::make('reading')
+                    ->label('Bible Reading')
+                    ->maxLength(255),
+
+                Select::make('person_id')
+                    ->label('Preacher')
+                    ->options(
+                        Person::pluck('firstname', 'id')
+                    )
+                    ->searchable()
+                    ->placeholder('Select a preacher'),
             ])
             ->mountUsing(function (Schema $form) {
                 $plan = ServicePlan::where('date', $this->selectedDate)->first();
 
                 $form->fill([
                     'series_id' => $plan?->series_id,
-                    'theme' => $plan?->theme,
+                    'details' => $plan?->details,
+                    'reading' => $plan?->reading,
+                    'person_id' => $plan?->person_id,
                 ]);
             })
             ->action(function (array $data) {
@@ -174,7 +207,9 @@ class WorshipPlanner extends Page implements HasForms
                     ['date' => $this->selectedDate],
                     [
                         'series_id' => $data['series_id'] ?? null,
-                        'theme' => $data['theme'] ?? null,
+                        'details' => $data['details'] ?? null,
+                        'reading' => $data['reading'] ?? null,
+                        'person_id' => $data['person_id'] ?? null,
                     ]
                 );
 
