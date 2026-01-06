@@ -4,8 +4,10 @@ namespace Modules\Worship\Reports;
 
 use Illuminate\Support\Facades\Route;
 use Lightworx\FilamentReports\Reports\BaseReport;
+use Modules\Worship\Models\Prayer;
 use Modules\Worship\Models\Series;
 use Modules\Worship\Models\Service;
+use Modules\Worship\Models\Song;
 
 class ServiceReport extends BaseReport
 {
@@ -19,7 +21,7 @@ class ServiceReport extends BaseReport
     public static function routes(): void
     {
         Route::get('/admin/worship/reports/services/{id}', function ($serviceId) {
-            $service = Service::with(['setitems' => function($q) { $q->orderBy('sort_order', 'asc'); }])->where('id',$serviceId)->first();
+            $service = Service::with(['setitems' => function ($q) { $q->orderBy('sort_order'); }])->findOrFail($serviceId);
             return (new static())->setService($service)->handle();
         })->name('reports.service');
     }
@@ -49,8 +51,6 @@ class ServiceReport extends BaseReport
         $this->SetTitle($title . " - " . $stime);
         $this->SetAutoPageBreak(true, 0);
         $this->SetFont('Arial', 'B', 18);
-        $song=url('/') . "/images/song.png";
-        $prayer=url('/') . "/images/prayer.png";
         $this->Image(url('/') . "/images/bwidelogo.png",123,8,77,30);
         $this->rect(19,10,53,7.5,'F');
         $this->SetTextColor(255,255,255);
@@ -73,50 +73,52 @@ class ServiceReport extends BaseReport
             $this->text(77,28,$series->series);
             $this->text(77,32,"Week: " . 1 + (strtotime($this->service->servicedate) - strtotime($series->startingdate)) / 604800);
         }
-        $items=$this->service->setitems;
-        $yy=44;
-        $projectarray=['Bible re','Communio','Benedict','Lords Pr'];
-        foreach ($items as $item){
-            //$item->extra = $this->GetExtraInfo($item);
+        
+        $items = $this->service->setitems;
+        $yy = 44;
+
+        $songIcon   = url('/images/song.png');
+        $prayerIcon = url('/images/prayer.png');
+
+        foreach ($items as $item) {
             $this->SetFont('Arial', '', 14);
-            if (!$item->setitemable_id){
-                if (in_array(substr($item->note,0,8),$projectarray)){
-                    $this->Image($prayer,10,$yy-4.5,8);
-                }
-                $this->text(20, $yy, $item->note);
-                $width=$this->GetStringWidth($item->note);
-                $this->SetFont('Arial', '', 10);
-                $this->text(23+$width,$yy,$item->extra);
+            if ($item->content_type=="song"){
+                $title=Song::find($item->content_id)->title;
+            } elseif ($item->content_type=="prayer"){
+                $title=Prayer::find($item->content_id)->title;
             } else {
-                if ($item->setitemable_type=="song"){
-                    $this->Image($song,12,$yy-4,4);
+                $title=$item->title;
+            }
+            $subtitle = $item->subtitle;
+            switch ($item->content_type) {
+                case 'song':
+                    $this->Image($songIcon, 12, $yy - 4, 4);
                     $this->SetFont('Arial', 'B', 14);
-                } elseif ($item->setitemable_type=="prayer"){
-                    $this->Image($prayer,10,$yy-4.5,8);
-                }
-                if ($item->note){
-                    $this->text(20, $yy, $item->setitemable->title);
-                    $width=$this->GetStringWidth($item->setitemable->title);
-                    $this->SetFont('Arial', '', 10);
-                    if (23+$width+$this->GetStringWidth($item->extra)>200){
-                        $yy=$yy+5;
-                        $this->text(30,$yy,$item->extra);
-                    } else {
-                        $this->text(23+$width,$yy,$item->extra);
-                    }
+                    break;
+
+                case 'prayer':
+                case 'benediction':
+                    $this->Image($prayerIcon, 10, $yy - 4.5, 8);
+                    break;
+            }
+
+            // Render title
+            $this->text(20, $yy, $title);
+            $titleWidth = $this->GetStringWidth($title);
+
+            // Render subtitle if present
+            if ($subtitle) {
+                $this->SetFont('Arial', '', 10);
+
+                if (23 + $titleWidth + $this->GetStringWidth($subtitle) > 200) {
+                    $yy += 5;
+                    $this->text(30, $yy, $subtitle);
                 } else {
-                    $this->text(20, $yy, $item->setitemable->title);
-                    $width=$this->GetStringWidth($item->setitemable->title);
-                    $this->SetFont('Arial', '', 10);
-                    if (23+$width+$this->GetStringWidth($item->extra)>200){
-                        $yy=$yy+5;
-                        $this->text(30,$yy,$item->extra);
-                    } else {
-                        $this->text(23+$width,$yy,$item->extra);
-                    }
+                    $this->text(23 + $titleWidth, $yy, $subtitle);
                 }
             }
-            $yy=$yy+8;
+
+            $yy += 8;
         }
         $filename="OOS" . date('ymd',strtotime($this->service->servicedate)) . "_" . $stime;
         $rosters=array('Communion','Data Projector','Prayer','Society Stewards','Sound Desk','Welcome Team');

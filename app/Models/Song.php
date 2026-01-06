@@ -16,14 +16,19 @@ class Song extends Model
         return $this->morphMany(Setitem::class,'setitemable');
     }
 
-    public function getLastusedAttribute() {
-        $id=$this->id;
-        $today=date('y-m-d');
-        $set=Service::whereHas('setitems', function($q) use ($id) { $q->where('setitemable_id',$id)->where('setitemable_type','song'); })->where('servicedate','<',$today)->orderBy('servicedate','DESC')->first();
-        if ($set){
-            return Carbon::createFromTimeStamp(strtotime($set->servicedate))->diffForHumans();
-        } else {
-            return "";
-        }
+    public function getLastUsedAttribute(): ?string
+    {
+        $service = Service::query()
+            ->whereDate('servicedate', '<', now())
+            ->whereHas('setitems', function ($q) {
+                $q->where('content_type', 'song')
+                ->where('content_id', $this->id);
+            })
+            ->latest('servicedate')
+            ->first();
+
+        return $service
+            ? Carbon::parse($service->servicedate)->diffForHumans()
+            : null;
     }
 }

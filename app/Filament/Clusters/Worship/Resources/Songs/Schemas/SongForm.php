@@ -168,16 +168,18 @@ class SongForm
                         TextEntry::make('history')->label('')
                         ->state(function (Song $record) {
                             if ($record){
-                                $allplays=Service::whereHas('setitems', 
-                                    function($q) use ($record) { 
-                                        $q->where('setitemable_id',$record->id)
-                                        ->where('setitemable_type','song'); 
+                                $allplays=Service::query()
+                                    ->whereDate('servicedate', '<', now())
+                                    ->whereHas('setitems', function ($q) use ($record) {
+                                        $q->where('content_type', 'song')
+                                        ->where('content_id', $record->id);
                                     })
-                                    ->where('servicedate','<',date('Y-m-d'))->orderBy('servicedate','DESC')->get();
+                                    ->latest('servicedate')
+                                    ->first();
                                 $history=array();
-                                foreach ($allplays as $play){
-                                    $history[$play->servicetime][]=date('Y-m-d',strtotime($play->servicedate));
-                                }
+                                // foreach ($allplays as $play){
+                                    $history[$allplays->servicetime][]=date('Y-m-d',strtotime($allplays->servicedate));
+                                //}
                                 ksort($history);
                                 $period=date('Y-m-d',strtotime('4 months ago'));
                                 $histarray=array();

@@ -3,7 +3,6 @@
 namespace Modules\Worship\Filament\Clusters\Worship\Resources\Services\Schemas;
 
 use App\Models\Person;
-use App\Models\Tag;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -15,6 +14,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
@@ -23,6 +23,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
 use Hugomyb\FilamentMediaAction\Actions\MediaAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -33,7 +35,6 @@ use Modules\Worship\Models\Service;
 use Modules\Worship\Models\Setitem;
 use Modules\Worship\Models\Song;
 use Illuminate\Support\Str;
-use Modules\Worship\Models\ServiceElementType;
 
 class ServiceForm
 {
@@ -127,99 +128,116 @@ class ServiceForm
                             ->columnSpan(2)
                             ->live()
                             ->orderColumn('sort_order')
-                            ->reorderableWithDragAndDrop()
+                            ->defaultItems(0)
                             ->addActionLabel('Add new set item')
                             ->table([
                                 TableColumn::make('title')->hiddenHeaderLabel(),
-                                TableColumn::make('note')->hiddenHeaderLabel(),
+                                TableColumn::make('Extra details'),
                             ])
                             ->schema([
                                 TextEntry::make('title')
-                                    ->hiddenLabel()
-                                    ->state(function (Get $get) {
-                                        $item = Setitem::with('elementType')->find($get('id'));
-                                        if (!$item) return null;
-                                        $contentTitle = null;
-                                        if ($item->content_id && $item->elementType?->content_kind) {
-                                            switch ($item->elementType->content_kind) {
+                                    ->icon(function ($record){
+                                        if ($record) {
+                                            switch ($record->content_type) {
                                                 case 'song':
-                                                    $contentTitle = $item->song?->title;
-                                                    break;
-                                                case 'prayer':
-                                                    $contentTitle = $item->prayer?->title;
-                                                    break;
+                                                    return 'heroicon-o-musical-note';
                                                 case 'reading':
-                                                    $contentTitle = $item->reading?->reference;
-                                                    break;
-                                                case 'preacher':
-                                                    $contentTitle = $item->preacher?->firstname . ' ' . $item->preacher?->surname;
-                                                    break;
+                                                    return 'heroicon-o-book-open';
+                                                case 'prayer':
+                                                    return 'heroicon-o-microphone';
+                                                default:
+                                                    return '';
                                             }
                                         }
-
-                                        return $contentTitle ?? $item->elementType?->label ?? $item->note;
-                                    }),
-                                TextEntry::make('note')->hiddenLabel(),
-                                Hidden::make('id'),
+                                        return '';
+                                    })
+                                    ->state(function (Setitem $record) {
+                                        if ($record) {
+                                            switch ($record->content_type) {
+                                                case 'song':
+                                                    $song = Song::find($record->content_id);
+                                                    return $song ? $song->title : 'Unknown song';
+                                                case 'prayer':
+                                                    $prayer = Prayer::find($record->content_id);
+                                                    return $prayer ? $prayer->title : 'Unknown prayer';
+                                                default:
+                                                    return $record->title;
+                                            }
+                                        }
+                                        return '';
+                                    })
+                                    ->hiddenLabel(),
+                                TextEntry::make('subtitle')->hiddenLabel(),
+                                Hidden::make('id')
                             ])
-                            // ------------------- ADD ITEM -------------------
                             ->addAction(
-                                fn(Action $action) => $action
+                                fn (Action $action) => $action
                                     ->schema([
-                                        Select::make('element_type_id')
+                                        Select::make('content_type')
                                             ->label('Type')
-                                            ->options(ServiceElementType::orderBy('label')->pluck('label', 'id')->toArray())
+                                            ->options([
+                                                'song' => 'Song',
+                                                'prayer' => 'Prayer',
+                                                'reading' => 'Bible reading',
+                                                'sermon' => 'Sermon',
+                                                'other' => 'Other'
+                                            ])
+                                            ->default('song')
+                                            ->required()
                                             ->reactive()
-                                            ->afterStateUpdated(fn(Set $set) => $set('content_id', null)),
-
+                                            ->afterStateUpdated(function ($state, Set $set, $record) {
+                                                if ($state === 'reading') {
+                                                    $set('subtitle', $record->reading);
+                                                }
+                                                if ($state === 'sermon') {
+                                                    $set('subtitle', 'Michael Bishop');
+                                                }
+                                            }),
                                         Select::make('content_id')
                                             ->label('Select content')
                                             ->searchable()
+                                            ->reactive()
                                             ->options(function (Get $get) {
-                                                $type = ServiceElementType::find($get('element_type_id'));
-                                                if (!$type || !$type->expects_content) return [];
-
-                                                return match ($type->content_kind) {
-                                                    'song' => Song::orderBy('title')->pluck('title', 'id')->toArray(),
-                                                    'prayer' => Prayer::orderBy('title')->pluck('title', 'id')->toArray(),
-                                                    'reading' => BibleReading::pluck('reference', 'id')->toArray(),
-                                                    'preacher' => Person::orderBy('firstname')->orderBy('surname')->pluck('firstname', 'id')->toArray(),
-                                                    default => [],
+                                                $type = $get('content_type');
+                                                return match ($type) {
+                                                    'song'   => Song::orderBy('title')->pluck('title', 'id'),
+                                                    'prayer' => Prayer::orderBy('title')->pluck('title', 'id'),
+                                                    default  => [],
                                                 };
                                             })
-                                            ->visible(fn(Get $get) => ServiceElementType::find($get('element_type_id'))->expects_content ?? false),
-
-                                        TextInput::make('note')->label('Optional note'),
+                                            ->visible(fn (Get $get) => $get('content_type') === 'song' || $get('content_type') === 'prayer'
+                                            )
+                                            ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                                                $type = $get('content_type');
+                                                if ($type === 'song' && $state) {
+                                                    $song = Song::find($state);
+                                                    $set('subtitle', $song?->firstline);
+                                                }
+                                            }),
+                                        TextInput::make('title')->visible(fn (Get $get) => $get('content_type') == "other")->default(''),
+                                        Hidden::make('service_id')->default(fn ($record) => $record->id),
+                                        TextInput::make('subtitle')->label('Optional note')
                                     ])
-                                    ->after(function (array $data, Get $get, Repeater $component) {
-                                        $serviceId = $get('id');
-                                        $sort = count($component->getState())-2;
-
+                                    ->action(function (array $data, $livewire) {
+                                        // Create new Setitem
+                                        if (isset($data['title'])){
+                                            $title = $data['title'];
+                                        } elseif ($data['content_type'] == "reading"){
+                                            $title = "Bible reading";
+                                        } else {
+                                            $title= null;
+                                        }
                                         $setitem = Setitem::create([
-                                            'service_id' => $serviceId,
-                                            'element_type_id' => $data['element_type_id'],
-                                            'content_id' => $data['content_id'] ?? null,
-                                            'note' => $data['note'] ?? null,
-                                            'sort_order' => $sort,
+                                            'service_id'   => $data['service_id'],
+                                            'content_type' => $data['content_type'],
+                                            'title' => $title,
+                                            'content_id'   => $data['content_id'] ?? null,
+                                            'subtitle'     => $data['subtitle'] ?? null,
+                                            'sort_order'   => Setitem::where('service_id', $data['service_id'])->count(),
                                         ]);
-
-                                        $component->state(
-                                            collect($component->getState())
-                                                ->put("record-{$setitem->id}", [
-                                                    'id' => $setitem->id,
-                                                    'element_type_id' => $setitem->element_type_id,
-                                                    'content_id' => $setitem->content_id,
-                                                    'note' => $setitem->note,
-                                                    'title' => $setitem->content_id 
-                                                        ? ($setitem->{$setitem->elementType->content_kind}?->title ?? $setitem->note) 
-                                                        : ($setitem->elementType?->label ?? $setitem->note),
-                                                    'sort_order' => $setitem->sort_order,
-                                                ])
-                                                ->toArray()
-                                        );
+                                        $livewire->refreshFormData(['setitems']);
                                     })
                             )
-                            // ------------------- DELETE ITEM -------------------
                             ->deleteAction(
                                 fn(Action $action) => $action
                                     ->after(function (array $arguments) {
@@ -227,24 +245,19 @@ class ServiceForm
                                         Setitem::find($id)?->delete();
                                     })
                             )
-                            // ------------------- EXTRA ITEM ACTIONS (VIEW / EDIT) -------------------
                             ->extraItemActions([
                                 // View linked content if it exists
                                 Action::make('viewItem')
                                     ->icon('heroicon-o-link')
                                     ->visible(function (array $arguments, Repeater $component) {
                                         $itemData = $component->getRawItemState($arguments['item']);
-                                        $elementTypeId = $itemData['element_type_id'] ?? null;
-                                        if (!$elementTypeId || empty($itemData['content_id'])) return false;
-                                        $elementType = ServiceElementType::find($elementTypeId);
-                                        return in_array($elementType?->content_kind ?? '', ['song', 'prayer']);
+                                        $type = $itemData['content_type'] ?? null;
+                                        if (!$type || empty($itemData['content_id'])) return false;
+                                        return in_array($type, ['song', 'prayer']);
                                     })
                                     ->url(function (array $arguments, Repeater $component) {
                                         $itemData = $component->getRawItemState($arguments['item']);
-                                        $elementTypeId = $itemData['element_type_id'] ?? null;
-                                        if (!$elementTypeId || empty($itemData['content_id'])) return null;
-                                        $elementType = ServiceElementType::find($elementTypeId);
-                                        return match ($elementType?->content_kind) {
+                                        return match ($itemData['content_type']) {
                                             'song' => route('filament.admin.worship.resources.songs.edit', ['record' => $itemData['content_id']]),
                                             'prayer' => route('filament.admin.worship.resources.prayers.edit', ['record' => $itemData['content_id']]),
                                             default => null,
@@ -261,45 +274,56 @@ class ServiceForm
                                         if (!$setitem) return [];
                                         return [
                                             'id' => $setitem->id,
-                                            'element_type_id' => $setitem->element_type_id,
+                                            'content_type' => $setitem->content_type,
                                             'content_id' => $setitem->content_id,
-                                            'note' => $setitem->note,
+                                            'subtitle' => $setitem->subtitle,
                                         ];
                                     })
                                     ->schema([
-                                        Select::make('element_type_id')
+                                        Select::make('content_type')
                                             ->label('Type')
-                                            ->options(ServiceElementType::orderBy('label')->pluck('label', 'id')->toArray())
+                                            ->options([
+                                                'song' => 'Song',
+                                                'prayer' => 'Prayer',
+                                                'reading' => 'Bible reading',
+                                                'sermon' => 'Sermon',
+                                                'other' => 'Other'
+                                            ])
                                             ->reactive()
                                             ->afterStateUpdated(fn(Set $set) => $set('content_id', null)),
 
                                         Select::make('content_id')
                                             ->label('Select content')
                                             ->searchable()
+                                            ->reactive()
                                             ->options(function (Get $get) {
-                                                $type = ServiceElementType::find($get('element_type_id'));
-                                                if (!$type || !$type->expects_content) return [];
-                                                return match ($type->content_kind) {
+                                                $type = $get('content_type');
+                                                return match ($type) {
                                                     'song' => Song::orderBy('title')->pluck('title', 'id')->toArray(),
                                                     'prayer' => Prayer::orderBy('title')->pluck('title', 'id')->toArray(),
-                                                    'reading' => BibleReading::pluck('reference', 'id')->toArray(),
-                                                    'preacher' => Person::orderBy('firstname')->orderBy('surname')->pluck('firstname', 'id')->toArray(),
                                                     default => [],
                                                 };
                                             })
-                                            ->visible(fn(Get $get) => ServiceElementType::find($get('element_type_id'))->expects_content ?? false),
+                                            ->visible(fn (Get $get) => $get('content_type') === 'song' || $get('content_type') === 'prayer')
+                                            ->afterStateUpdated(function($state, Get $get, Set $set) {
+                                                $type = $get('content_type');
+                                                if ($type == "song"){
+                                                    $song=Song::find($state);
+                                                    $set('subtitle', $song->firstline ?? '');
+                                                }
+                                            }),
                                         Hidden::make('id')->default(fn (Get $get) => $get('id')),
-                                        TextInput::make('note')->label('Optional note'),
+                                        TextInput::make('subtitle')->label('Optional note'),
                                     ])
                                     ->action(function (array $data, callable $set) {
                                         Setitem::whereKey($data['id'])->update([
-                                            'note' => $data['note'] ?? null,
-                                            'element_type_id' => $data['element_type_id'] ?? null,
+                                            'subtitle' => $data['subtitle'] ?? null,
+                                            'content_type' => $data['content_type'] ?? null,
                                             'content_id' => $data['content_id'] ?? null,
                                         ]);
 
                                         // Update repeater state so UI refreshes
-                                        $set('note', $data['note'] ?? null);
+                                        $set('subtitle', $data['subtitle'] ?? null);
                                     })
 
                             ])
