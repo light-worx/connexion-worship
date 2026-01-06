@@ -19,7 +19,7 @@ class ChordResource extends Resource
 {
     protected static ?string $model = Chord::class;
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 6;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMusicalNote;
 

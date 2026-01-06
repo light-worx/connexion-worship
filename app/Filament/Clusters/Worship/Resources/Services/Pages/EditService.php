@@ -40,7 +40,6 @@ class EditService extends EditRecord
                     foreach($existingservices as $es){
                         $searchndx=array_search($es->servicetime,$services);
                         if ($searchndx){
-                            dd($searchndx);
                             unset($services[$searchndx]);
                         }
                     }
@@ -82,7 +81,7 @@ class EditService extends EditRecord
 
     private function copyService($data){
         //$data['service']
-        $set=Service::with(['setitems' => function($q) { $q->orderBy('sortorder', 'asc'); }])->where('id',$this->record->id)->first();
+        $set=Service::with(['setitems' => function($q) { $q->orderBy('sort_order', 'asc'); }])->where('id',$this->record->id)->first();
         $newset = Service::create([
             'servicedate'=>$set->servicedate,
             'servicetime'=>$data['service'],
