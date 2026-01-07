@@ -28,9 +28,24 @@ class ServicePlan extends Model
         return $this->belongsTo(Series::class);
     }
 
+    public function setitems()
+    {
+        return $this->hasMany(Setitem::class)->orderBy('sort_order');
+    }
+
     public function person(): BelongsTo
     {
         return $this->belongsTo(Person::class);
+    }
+
+    public function songSetitems()
+    {
+        return $this->setitems()->where('content_type', 'song');
+    }
+
+    public function prayerSetitems()
+    {
+        return $this->setitems()->where('content_type', 'prayer');
     }
     /*
      |--------------------------------------------------------------------------
@@ -73,4 +88,30 @@ class ServicePlan extends Model
     {
         return $this->date->isSunday();
     }
+
+    public function copyPlannedItemsToService(Service $service): void
+    {
+        // Find the current last position in the service
+        $startOrder = (int) ($service->setitems()->max('sort_order') ?? 0);
+
+        $this->setitems()
+            ->orderBy('sort_order')
+            ->get()
+            ->each(function (Setitem $item, int $index) use ($service, $startOrder) {
+                Setitem::create([
+                    'service_id'   => $service->id,
+                    'sort_order'   => $startOrder + $index + 1,
+
+                    // hybrid content
+                    'content_type' => $item->content_type,
+                    'content_id'   => $item->content_id,
+
+                    // fallback text items (if any later)
+                    'title'        => $item->title,
+                    'subtitle'     => $item->subtitle,
+                    'extra'        => $item->extra,
+                ]);
+            });
+    }
+
 }

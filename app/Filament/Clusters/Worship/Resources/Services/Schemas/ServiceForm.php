@@ -120,11 +120,14 @@ class ServiceForm
                                         $component->state(true);
                                     }
                                 }
-                            }),                   
+                            }),
+                        Checkbox::make('include_planner_items')
+                            ->label('Include planner items for this date')
+                            ->default(true),                   
                         View::make('worship::repeater-style'),     
                         Repeater::make('setitems')
                             ->relationship('setitems')
-                            ->label('')
+                            ->hiddenLabel(true)
                             ->columnSpan(2)
                             ->live()
                             ->orderColumn('sort_order')

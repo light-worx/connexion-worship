@@ -8,7 +8,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('service_plans', function ($table) {
-            $table->id();
+            $table->increments('id')->unsigned();
             $table->date('date')->unique();
             $table->integer('series_id');
             $table->integer('person_id');

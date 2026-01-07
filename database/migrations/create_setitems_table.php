@@ -8,14 +8,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('setitems', function ($table) {
-            $table->id();
-            $table->integer('service_id');
+            $table->increments('id')->unsigned();
+            $table->foreignId('service_plan_id')->nullable();
+            $table->foreignId('service_id')->nullable();
             $table->integer('content_id')->nullable();
             $table->string('content_type')->nullable();
-            $table->integer('sort_order');
+            $table->unsignedInteger('sort_order')->default(0);
             $table->string('title')->nullable();
             $table->string('subtitle')->nullable();
-            $table->string('extra')->nullable();
+            $table->timestamps();
+            $table->index(['service_plan_id', 'sort_order']);
+            $table->index(['service_id', 'sort_order']);
         });
     }
 

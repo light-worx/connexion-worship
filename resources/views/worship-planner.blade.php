@@ -42,19 +42,27 @@
                                     style="border-left: 4px solid {{ $plan['series']['colour'] ?? '#0d9488' }}; padding-left: 0.5rem">
                                     {{ $plan['series']['series'] ?? 'No Series' }}
                                 </div>
-                                @if ($plan['details'])
-                                    <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                        {{ $plan['details'] }}
-                                    </div>
-                                @endif
-                                @if ($plan['reading'])
-                                    <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                        <strong>Bible Reading:</strong> {{ $plan['reading'] }}
-                                    </div>
-                                @endif
-                                @if ($plan['person_id'])
-                                    <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                        {{ $plan['person']['firstname'] }} {{ $plan['person']['surname'] }}
+                                <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                    @if ($plan['details'])
+                                        <i>{{ $plan['details'] }}</i><br>
+                                    @endif
+                                    @if ($plan['person_id'])
+                                        <strong>Preacher:</strong> {{ $plan['person']['firstname'] }} {{ $plan['person']['surname'] }}
+                                    @endif
+                                    @if ($plan['reading'])
+                                        | <strong>Reading:</strong> {{ $plan['reading'] }}
+                                    @endif
+                                </div>
+                                @if (!empty($plan['setitems']))
+                                    <div class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                                        <strong>Song / liturgy ideas: </strong>
+                                        @foreach ($plan['setitems'] as $item)
+                                            @if ($item['content_type'] === 'song')
+                                                <span>🎵 {{ $item['song']['title'] ?? '' }}</span>
+                                            @elseif ($item['content_type'] === 'prayer')
+                                                <span>📖 {{ $item['prayer']['title'] ?? '' }}</span>
+                                            @endif
+                                        @endforeach
                                     </div>
                                 @endif
                             @else
