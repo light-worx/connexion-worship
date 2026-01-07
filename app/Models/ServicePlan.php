@@ -114,4 +114,13 @@ class ServicePlan extends Model
             });
     }
 
+    public function services()
+    {
+        return $this->hasMany(
+            \Modules\Worship\Models\Service::class,
+            'servicedate',
+            'date'
+        );
+    }
+
 }

@@ -65,6 +65,18 @@
                                         @endforeach
                                     </div>
                                 @endif
+                                @if ($plan && ($plan['services_count'] ?? 0) > 0)
+                                    <a href="{{ route('filament.admin.worship.resources.services.index', ['tableFilters[servicedate][value]' => $key,]) }}"
+                                        class="mt-2 inline-flex items-center gap-1 text-xs text-success-600 hover:underline dark:text-success-400"
+                                        <x-filament::icon icon="heroicon-m-check-circle" class="h-4 w-4" />
+                                        <span>
+                                            {{ $plan['services_count'] === 1
+                                                ? 'Service created'
+                                                : $plan['services_count'] . ' services created'
+                                            }}
+                                        </span>
+                                    </a>
+                                @endif
                             @else
                                 <div class="mt-2 text-sm italic text-gray-400">+ Assign series</div>
                             @endif

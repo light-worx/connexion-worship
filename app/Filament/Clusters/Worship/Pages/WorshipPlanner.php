@@ -192,6 +192,7 @@ class WorshipPlanner extends Page implements HasForms
     protected function loadPlans(): void
     {
         $this->plans = ServicePlan::with(['series', 'person', 'setitems.song', 'setitems.prayer'])
+            ->withCount(['services as services_count',])    
             ->whereYear('date', $this->year)
             ->get()
             ->keyBy(fn ($plan) => $plan->date->toDateString())
