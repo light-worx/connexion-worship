@@ -123,4 +123,13 @@ class ServicePlan extends Model
         );
     }
 
+    public function midweekservices()
+    {
+        return $this->hasMany(
+            \Modules\Worship\Models\Service::class,
+            'servicedate',
+            'date'
+        );
+    }
+
 }

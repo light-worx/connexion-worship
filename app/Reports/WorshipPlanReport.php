@@ -22,6 +22,7 @@ class WorshipPlanReport extends BaseReport
             $plans = ServicePlan::with([
                     'series',
                     'person',
+                    'midweekservices',
                     'setitems.song',
                     'setitems.prayer',
                 ])
@@ -51,8 +52,7 @@ class WorshipPlanReport extends BaseReport
     public function Header(): void
     {
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(0, 8, "Worship Plan – {$this->year}", 0, 1, 'C');
-
+        $this->Cell(0, 8, "Worship Plan: {$this->year}", 0, 1, 'C');
         $this->Ln(2);
     }
 
@@ -95,21 +95,22 @@ class WorshipPlanReport extends BaseReport
 
     protected function renderRow($plan): void
     {
-        // Page break handling
         if ($this->GetY() > 185) {
             $this->AddPage('L');
             $this->renderTableHeader();
         }
 
-        $this->Cell(22, 5, $plan->date->format('j M'), 1);
+        $label = $plan->midweekService?->name
+            ? $plan->date->format('j M') . ' — ' . $plan->midweekService->name
+            : $plan->date->format('j M');
+
+        $this->Cell(22, 5, $label, 1);
         $this->Cell(60, 5, $plan->series->series ?? '', 1);
         $this->Cell(45, 5, $plan->person->fullname ?? '', 1);
         $this->Cell(140, 5, $plan->reading ?? '', 1);
 
         $this->Ln();
     }
-
-
 
     protected function getFilename(): string
     {

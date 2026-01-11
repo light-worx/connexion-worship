@@ -14,18 +14,18 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Modules\Worship\app\Classes\LiturgicalDateResolver;
 use Modules\Worship\Filament\Clusters\Worship\WorshipCluster;
 use Modules\Worship\Models\Prayer;
 use Modules\Worship\Models\ServicePlan;
 use Modules\Worship\Models\Series;
-use Modules\Worship\Models\Setitem;
 use Modules\Worship\Models\Song;
 
 class WorshipPlanner extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
     protected string $view = 'worship::worship-planner';
     protected static ?string $cluster = WorshipCluster::class;
     protected static ?int $navigationSort = 5;
@@ -49,7 +49,9 @@ class WorshipPlanner extends Page implements HasForms
     protected function getHeaderActions(): array
     {
         return [
-            Action::make($this->year . ' Worship plan')->url(fn (): string => route('reports.worshipplan', ['id' => $this->year])),
+            Action::make('Worship plan')
+                ->url(fn (): string => route('reports.worshipplan', ['year' => $this->year]))
+                ->icon('heroicon-o-document'),
         ];
     }
 
@@ -103,13 +105,37 @@ class WorshipPlanner extends Page implements HasForms
                 'person_id' => $data['person_id'] ?? null,
             ]
         );
-
         $this->loadPlans();
-
         $this->isEditorOpen = false;
-        $this->loadPlans();
     }
 
+    public function getPlannerDays(): array
+    {
+        $days = [];
+
+        // Sundays
+        foreach ($this->getSundaysByMonth() as $month => $sundays) {
+            foreach ($sundays as $date) {
+                $days[$date->toDateString()] = [
+                    'date' => $date,
+                    'type' => 'sunday',
+                ];
+            }
+        }
+
+        // Special services
+        foreach (LiturgicalDateResolver::forYear($this->year) as $key => $day) {
+            $days[$key] = [
+                'date' => $day['date'],
+                'type' => 'special',
+                'label' => $day['name'],
+            ];
+        }
+
+        ksort($days);
+
+        return $days;
+    }
 
     public function getSundaysByMonth(): array
     {
@@ -169,6 +195,7 @@ class WorshipPlanner extends Page implements HasForms
                 })
                 ->searchable()
                 ->placeholder('Select a preacher'),
+
             Select::make('songs')
                 ->label('Song ideas')
                 ->multiple()
