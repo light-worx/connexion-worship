@@ -49,9 +49,7 @@ class WorshipPlanner extends Page implements HasForms
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('Worship plan')
-                ->url(fn (): string => route('reports.worshipplan', ['year' => $this->year]))
-                ->icon('heroicon-o-document'),
+            Action::make($this->year . ' Worship plan')->url(fn (): string => route('reports.worshipplan', ['year' => $this->year])),
         ];
     }
 
