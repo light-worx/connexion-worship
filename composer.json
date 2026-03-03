@@ -8,7 +8,7 @@
         }
     ],
     "require": {
-        "hugomyb/filament-media-action": "^4.1",
+        "hugomyb/filament-media-action": "^5.0",
         "joaopaulolndev/filament-pdf-viewer": "^2.0"
     },
     "extra": {
